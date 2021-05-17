@@ -1,0 +1,8 @@
+# depslib dependency file v1.0
+1621202722 source:e:\pwr-viet\coding\test\test.cpp
+	<iostream>
+	<vector>
+	<set>
+	<math.h>
+	<fstream>
+
