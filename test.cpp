@@ -3,6 +3,8 @@
 #include <set>
 #include <math.h>
 #include <fstream>
+#include <iomanip>
+#include <string>
 
 
 using namespace std;
@@ -14,31 +16,20 @@ struct Location{
     char D ='^';
     Location(){};
     Location(int x, int y){ X = x; Y = y;};
-
     Location(int x, int y, float u){ X = x; Y = y; U = u;};
+    
+    Location(int x, int y, float u, char d){ X = x; Y = y; U = u; D = d;};
 
 };
-class World
-{
-private:
-    vector<Location> checkPath;
-    Location W,S,B,Tp,Tn,F;
-    float R,G,p1,p2,p3;
 
-public:
-    //World(Location W,Location S,Location B, )
-
-
-
-};
 
 float checkConverge(vector<Location> U1, vector<Location> U2)
 {
     int length = U1.size()-2;
     float converge = 0;
-    cout<<converge<<endl;
+    //cout<<converge<<endl;
     for ( int i =0;i<length;i++){
-         converge += pow(U1[i].U,2) - pow(U2[i].U,2);
+         converge += abs(pow(U1[i].U,2) - pow(U2[i].U,2));
 
     }
 
@@ -101,16 +92,27 @@ bool notInSet(int x, int y, vector<Location> T)
     return true;
 }
 
-int main()
+Location returnElm(int x, int y, vector<Location> T)
 {
-   // vector<Location> state;
+  for(int i=0; i<T.size();i++)
+    {
+      if(T[i].X == x&& T[i].Y == y)
+        return T[i];
+    }
+    
+}
+
+
+int main(int argc, char **data)
+{
+    vector<Location> state, world, stateTmp;
     vector<float>  P = {0,0,0,0};
     float R,G;
     Location W,S;
     vector<Location> T,F;
-
+    cout<<data[1]<<endl;
     ifstream myfile;
-    myfile.open("data.txt",ios::in);
+    myfile.open(data[1],ios::in);
      char Parametr;
      int x,y;
      float u;
@@ -163,13 +165,13 @@ int main()
         case 'T':
             {
                 myfile>>x>>y>>u;
-                T.push_back({x,y,u});
+                T.push_back({x,y,u,'T'});
                 break;
             }
         case 'F':
             {
                 myfile>>x>>y;
-                F.push_back({x,y});
+                F.push_back({x,y,0,'F'});
                 break;
             }
         default:
@@ -186,7 +188,7 @@ int main()
     P[3] = 1 - P[1] - P[0] - P[2];
 
   cout<<W.X<<W.Y<<endl;
-/*
+
     for ( int j=1;j<W.Y+1;j++)
         for( int i=1;i<W.X+1;i++)
     {
@@ -206,12 +208,9 @@ int main()
     {
         cout<<state[i].X<< " "<<state[i].Y<< " "<<state[i].U<< " "<<state[i].D<<endl;
     }
-*/
+
     cout<<P[0]<<P[1]<<P[2]<<endl;
 
-
-    vector<Location> state{{1,1,0},{2,1,0},{3,1,0},{4,1,0},{1,2,0},{3,2,0},{1,3,0},{2,3,0},{3,3,0},{4,2,-1},{4,3,1} };
-     vector<Location> stateTmp;
 
 
     int dem =0;
@@ -245,15 +244,19 @@ int main()
 
         }
 
-        cout<<checkConverge(state,stateTmp)<<endl;
+        //cout<<checkConverge(state,stateTmp)<<endl;
         dem++;
     }while(checkConverge(state,stateTmp) > 0.0001);
 
+    world.insert(world.end(),state.begin(),state.end());
+    world.insert(world.end(),F.begin(),F.end());
+    
+    
+    for ( int i =0; i < world.size();i++)
+        cout<<"("<<world[i].X<<","<<world[i].Y<<") - U ="<<setprecision(3)<<world[i].U<<" and policy : "<<world[i].D<<endl;
 
-     for ( int i =0; i < state.size();i++)
-        cout<<"("<<state[i].X<<","<<state[i].Y<<") - U ="<<state[i].U<<" and policy : "<<state[i].D<<endl;
 
-
+        cout<<F[0].D<<endl;
         int M=5,N=6;
 
         for ( int i=0;i<3*N+1;i++)
