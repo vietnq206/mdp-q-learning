@@ -254,7 +254,6 @@ int main()
         cout<<"("<<state[i].X<<","<<state[i].Y<<") - U ="<<state[i].U<<" and policy : "<<state[i].D<<endl;
 
 
-//Testtt
         int M=5,N=6;
 
         for ( int i=0;i<3*N+1;i++)
