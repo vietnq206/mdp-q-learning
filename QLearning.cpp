@@ -1,6 +1,8 @@
 #include <iostream>
 #include <vector>
 #include <fstream>
+#include <random>
+#include <string>
 
 
 using namespace std;
@@ -16,7 +18,7 @@ class state
     int X;
     int Y;
     float R,U,Qu = 0, Ql = 0, Qr = 0, Qd = 0,Qt=0;
-    int Nu=0,Nd=0,Nl=0,Nr=0;
+    float Nu=0,Nd=0,Nl=0,Nr=0;
     char D ='^';
     char type;
     state(){};
@@ -25,6 +27,7 @@ class state
     state(int x, int y, float u, float r, char t){ X = x; Y = y; U = u; R =r; type =t;};
 
     float maxQ();
+    char policy();
     void updateQ(char d,float Qmax, float E,float G);
     void updateQTerminal(float E,float G);
     void updateN(char d);
@@ -36,7 +39,18 @@ class state
 
 };
 
-
+string alignStr(float f)
+{
+    string s1(to_string(f));
+    string s;
+    s = s1.substr(0,6);
+    //cout<<s1<<endl;
+    while(s.length() <6 )
+    {
+        s += " ";
+    }
+    return s;
+}
 
 bool notInSet(int x, int y, vector<state> T)
 {
@@ -72,13 +86,28 @@ class Simulator
 };
 
 
-void printMap(vector<state> map)
+void printMap(vector<state> map);
+state returnStateQs(char action, vector<state> map);
+float errorValue(vector<state> map);
+
+template<typename T>
+T randomE(T from, T to)
 {
-    for(auto elm:map)
-    {
-        cout<<" X = "<<elm.X<<" Y = "<<elm.Y<<" Ql = "<<elm.Nl<<" Qr = "<<elm.Nr<<" Qu= "<<elm.Nu<<" Qd = "<<elm.Nd<<" Qt= "<<elm.Qt<<endl;
-    }
+    random_device rand_dev;
+    mt19937 generater(rand_dev());
+    uniform_real_distribution<T> distr(from, to);
+    return distr(generater);
 }
+
+char randomAction()
+{
+    double ran = randomE(0.0,4.0);
+    if ( ran<=1) return '^';
+    else if (ran <=2) return '<';
+    else if (ran <=3) return '>';
+    else return 'v';
+}
+
 
 int main ( int argc, char **data)
 {
@@ -97,49 +126,96 @@ int main ( int argc, char **data)
     cout<<endl;
     cout<<endl;
     cout<<E<<G<<endl;
+    int aha;
+    double sumCur = 0, sumPre = 0;
+    double randomExploration;
+    action = '^';
+    int iteration = 0;
+
+
+    ofstream outfile;
+    outfile.open("dataOut.dat");
 
 
 try {
-    while(1)
+    while(iteration < 10000)
     {
         if(nState.type == 'T')
         {
             xCurrent = map[0].X;
             yCurrent = map[0].Y;
+            action   = map[0].policy();
+            outfile<<iteration+1<<" ";
+            for( auto elm:map){
+                string str1(to_string(elm.maxQ()));
+
+                outfile << str1<<" ";
+                
+            }
+             outfile<<endl;
+            //if((sumCur - sumPre) < 0.00001) break;
+            //sumPre = sumCur;
+            iteration++;
         }
-        cout<<" Current location: "<<xCurrent<<" "<<yCurrent<<endl;
-        printMap(map);
-        cout<<"Next action "<<endl;
-        cin>>action;
+
+        randomExploration = randomE(0.00,1.00);
+        if(randomExploration < s.getE())    action = randomAction();
+
+        //cout<<"randoom number "<<randomExploration<<"and E "<<s.getE()<<endl;
+
+        //cin>>aha;
+        //cout<<" Current location: "<<xCurrent<<" "<<yCurrent<<endl;
+        //printMap(map);
+        //cout<<"Action "<< action<<endl;
+        
 
         
         nState = s.take_action(xCurrent,yCurrent,action,map);
         if(notInSet(nState.X,nState.Y,map)) map.push_back(nState);
         Qmax = nState.maxQ();
-        cout<<"Qnax ="<<nState.type<<endl;
+        //cout<<"Qnax ="<<nState.type<<"Qnax ="<<nState.X<<"Qnax ="<<nState.Y<<endl;
         for( auto& elm:map)
         {
             if(elm.X == xCurrent&& elm.Y == yCurrent)
             {
                 elm.updateN(action);
-                elm.updateQ(action,Qmax,E,G);
+                if(elm.type =='T')
+                    elm.updateQTerminal(0.5,G);
+                else
+                    elm.updateQ(action,Qmax,E,G);
+                
                 
             }
             else if(elm.X == nState.X && elm.Y == nState.Y && nState.type == 'T') 
             {
                 elm.updateN(action);
-                cout<<xCurrent<<yCurrent<<endl;
-                cout<<"type: "<<elm.type<<endl;
-                elm.updateQTerminal(E,G);
+                //cout<<xCurrent<<yCurrent<<endl;
+                //cout<<"type: "<<elm.type<<endl;
+                elm.updateQTerminal(0.5,G);
+               
             }
+            sumCur+= elm.maxQ();
                 
-        }       
-
+        }        
         
+
+        action = nState.policy();
+
+
+
+
+
+
         xCurrent = nState.X;
         yCurrent = nState.Y;
         
     
+
+
+
+        
+      //  cout<<iteration<<endl;
+
     }
 
    
@@ -149,7 +225,8 @@ try {
     cerr << msg << endl;
 }
 
-
+printMap(map);
+   outfile.close();
 
 }
 
@@ -351,7 +428,6 @@ void Simulator::printSimulate()
 float Simulator::getE() {return E;}
 float Simulator::getG() {return G;}
 
-
 float state::maxQ()
 {
     float max = -99999;
@@ -362,31 +438,52 @@ float state::maxQ()
     if (type == 'T')
         return Qt;
     return max; 
+} 
+
+
+char state::policy()
+{
+    char a;
+    float max = -99999;
+    if(Qu > max) {max =Qu; a = '^';};
+    if(Qd > max) {max =Qd; a = 'v';};
+    if(Ql > max) {max =Ql; a = '<';};
+    if(Qr > max) {max =Qr; a = '>';};
+    
+
+    return a; 
 }  
 
  void state::updateQ(char d,float Qmax, float E,float G)
     {
+                        
         switch(d)
         {
             case '^':
             {
-                //cout<<E<<R<<G<<Qu<<endl;
-                Qu += (1/Nu)*(R + G*Qmax -   Qu) ;
+                float Nlearn = 1/Nu;
+               // cout<<"index learn"<<Nlearn<<endl;
+                Qu += Nlearn*(R + G*Qmax -   Qu) ;
+
                 break;
             }
             case '<':
             {
-                Ql += (1/Nl)*(R + G*Qmax -   Ql) ;
+                float Nlearn = 1/Nl;
+                Ql += Nlearn*(R + G*Qmax -   Ql) ;
                 break;
             }
             case 'v':
             {
-                Qd += (1/Nd)*(R + G*Qmax -   Qd) ;
+                float Nlearn = 1/Nd;
+                //cout<<"index learn"<<(R + G*Qmax -   Qd) <<endl;
+                Qd += Nlearn*(R + G*Qmax -   Qd) ;
                 break;
             }
             case '>':
             {
-                Qr += (1/Nr)*(R + G*Qmax -   Qr) ;
+                float Nlearn = 1/Nr;
+                Qr += Nlearn*(R + G*Qmax -   Qr) ;
                 break;
             }
             default:
@@ -433,12 +530,81 @@ void state::updateQTerminal(float E,float G)
        throw " Incorrect datatype in updateQTerminal!";
     else
     {
-
-        Qt = E*(R + G*Qt);
+       // cout<<"HELLO!!"<<endl;
+        //Qt = 0.5*(R + G*Qt);
+        Qt = U;
         
     }        
 }
 state Simulator::startState()
 {
     return S;
+}
+
+void printMap(vector<state> map)
+{
+    for(auto elm:map)
+    {
+        cout<<" X = "<<elm.X<<" Y = "<<elm.Y<<" Ql = "<<elm.Ql<<" Qr = "<<elm.Qr<<" Qu= "<<elm.Qu<<" Qd = "<<elm.Qd<<" Qt= "<<elm.Qt<<endl;
+    }
+}
+float errorValue(vector<state> map)
+{
+    state Up,Left,Right,Down;
+    for(auto elm:map)
+    {
+        // Up = returnStateQs('^',elm,map);
+        // Left = returnStateQs('<',elm,map);
+        // Right = returnStateQs('>',elm,map);
+        // Down = returnStateQs('v',elm,map);
+
+
+    }
+
+}
+
+state returnStateQs(char action,state current, vector<state> map)
+{
+    int xtmp,ytmp;
+    switch (action)
+    {
+    case '^' :
+        {
+            xtmp =0;
+            ytmp =1;
+            break;
+        }
+    case 'v' :
+        {
+            xtmp =0;
+            ytmp =-1;
+            break;
+        }
+    case '<' :
+        {
+            xtmp =-1;
+            ytmp =0;
+            break;
+        }
+    case '>' :
+        {
+            xtmp =1;
+            ytmp =0;
+            break;
+        }
+    default:
+        {
+            cout<<"ERROR!!"<<endl;
+        }
+    }
+
+
+    for (int i=0; i< map.size();i++)
+    {
+        if(map[i].X == current.X + xtmp && map[i].Y == current.Y + ytmp  )
+        {
+             return map[i];
+        }
+    }
+    return current;;
 }
