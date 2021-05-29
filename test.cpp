@@ -126,12 +126,16 @@ int main(int argc, char **data)
     float R,G,E;
     Location W,S;
     vector<Location> T,F,B;
+
+    //vector<string> data;
+
     cout<<data[1]<<endl;
     ifstream myfile;
     myfile.open(data[1],ios::in);
      char Parametr;
      int x,y;
      float u;
+
    while(1)
    {
          if(myfile.eof())
@@ -252,7 +256,7 @@ int main(int argc, char **data)
 
     int dem =0;
     float Umax,Uup,Uleft,Udown,Uright;
-
+    
     do
     {
 
@@ -287,9 +291,9 @@ int main(int argc, char **data)
 
     world.insert(world.end(),state.begin(),state.end());
     world.insert(world.end(),F.begin(),F.end());
+    cout<<" iteration"<<dem<<endl;
     
     
-
 
 
 
