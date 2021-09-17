@@ -3,13 +3,11 @@
 #include <fstream>
 #include <random>
 #include <string>
+#include <chrono>
+#include <iomanip>
 
 
 using namespace std;
-
-
-
-
 
 
 class state
@@ -34,7 +32,7 @@ class state
 
     void print()
     {
-        cout<<"X = "<<X<<" Y = "<<Y<<" U = "<<U<<" R = "<<R<<" Type = "<<type<<endl;
+        cout<<"X = "<<X<<" Y = "<<Y<<" R = "<<R<<" Type = "<<type<<endl;
     }
 
 };
@@ -61,6 +59,7 @@ class Simulator
         void printSimulate();
         state startState();
         void setE(float e);
+        inline char probabilityAction(char d);
         void setG(float g);
         float getE();
         float getG();
@@ -73,9 +72,9 @@ state returnElm(int x, int y, vector<state> T);
 void printMap(vector<state> map);
 state returnStateQs(char action, vector<state> map);
 float errorValue(vector<state> map);
-char randomAction();
+inline char randomAction();
 template<typename T>
-T randomE(T from, T to)
+inline T randomE(T from, T to)
 {
     random_device rand_dev;
     mt19937 generater(rand_dev());
@@ -85,19 +84,15 @@ T randomE(T from, T to)
 
 
 
-
 int main ( int argc, char **data)
 {
-    
-
-
-
+    auto start = chrono::steady_clock::now();
     Simulator s(data[1]);
     s.printSimulate();
     
     state nState;
     vector<state> map{s.startState()};
-
+    int Nloop = 150000;  //number of iteration
 
 
     if(argc > 2) 
@@ -112,6 +107,11 @@ int main ( int argc, char **data)
         float E = stof(sData);
         s.setE(E);
     }
+        if (argc > 4 )
+    {
+        string sData(data[4]); 
+        Nloop = stof(sData);
+    }
 
 
     char action ;
@@ -120,10 +120,12 @@ int main ( int argc, char **data)
     yCurrent = map[0].Y;
     float Qmax;
     cout<<endl;
+    cout<<"Discout factor : "<<s.getG()<<" and epsilon = "<<s.getE()<<endl;
     cout<<endl;
 
-    cout<<s.getE()<<s.getG()<<endl;
-
+    cout<<"The number of iteration: "<<Nloop<<endl; 
+    cout<<"Calculating......"<<endl;
+    cout<<endl;
     double randomExploration;
     action = '^';
     int iteration = 0;
@@ -132,12 +134,13 @@ int main ( int argc, char **data)
     ofstream outfile;
     outfile.open("datatmp.dat");
 
-
+//Running trials
 try {
-    while(iteration < 100000)
+    while(iteration < Nloop)
     {
         if(nState.type == 'T')
         {
+            //If agent in terminal state, then save the data and come back to initial state
             xCurrent = map[0].X;
             yCurrent = map[0].Y;
             action   = map[0].policy();
@@ -152,7 +155,10 @@ try {
             iteration++;
         }
 
-        randomExploration = randomE(0.00,1.00);
+        //randomExploration = randomE(0.00,1.00);
+
+        randomExploration = double(rand() %100)/100;
+        //printMap(map);
         //cout<<"rand: "<<randomExploration<<endl; 
         if(randomExploration < s.getE()) action = randomAction();
 
@@ -169,15 +175,6 @@ try {
                 
                 
             }
-            // else if(elm.X == nState.X && elm.Y == nState.Y && nState.type == 'T') 
-            // {
-            //     elm.updateN(action);
-            //     //cout<<xCurrent<<yCurrent<<endl;
-            //     //cout<<"type: "<<elm.type<<endl;
-            //     elm.updateQTerminal(s.getG());
-               
-            // }
- 
                 
         }        
         
@@ -227,9 +224,11 @@ infile1.close();
 
 
 
-
-
+cout<<"Q value of each state after "<<Nloop<<" iterations!"<<endl;
 printMap(map);
+cout<<endl;
+cout<<" Utility and policy map."<<endl;
+
 vector<state> stateF = s.getF();
 for( auto elm: stateF)
     map.push_back(elm);
@@ -242,7 +241,7 @@ int M=s.worldX,N=s.worldY;
         if(i%3 ==0)
         for ( int j=0;j<M;j++)
             {
-        cout<<"-------";
+        cout<<"--------";
 
             }
   
@@ -254,7 +253,7 @@ int M=s.worldX,N=s.worldY;
                 temp = returnElm(j+1,(i-1)/3+1,map);
              
                 // cout<<"   "<<tmp.D<<"  |";
-                cout<<alignStr(temp.maxQ())<<"|";
+                cout<<" "<<alignStr(temp.maxQ())<<" |";
 
             }
         }
@@ -265,9 +264,9 @@ int M=s.worldX,N=s.worldY;
                 temp = returnElm(j+1,(i-2)/3+1,map);
                 //cout<<tmp.X<<tmp.Y<<"    "<<(i-2)/3+1<<j+1<<"  ";
                 if(temp.type == 'T' || temp.type =='F')
-                    cout<<"   "<<temp.type<<"  |";
+                    cout<<"   "<<temp.type<<"   |";
                 else
-                    cout<<"   "<<temp.policy()<<"  |";
+                    cout<<"    "<<temp.policy()<<"  |";
 
             }
         }
@@ -277,10 +276,9 @@ int M=s.worldX,N=s.worldY;
 
     }
 
-
-
-
-
+   auto end = chrono::steady_clock::now();
+    double timeTotal = double(chrono::duration_cast <chrono::nanoseconds> (end-start).count());
+    cout<<" Time of program "<<timeTotal/1e9<<endl;
 
 }
 
@@ -403,11 +401,46 @@ Simulator::Simulator(string fileName){
             
 }
 
+char Simulator::probabilityAction(char d)
+{
+    float thre1,thre2;
+    thre1 = P[0] + P[1];
+    thre2 = thre1 + P[2];
+    //double randomProb = randomE(0.00,1.00);
+    double randomProb = double(rand()%100)/100;
+    //cout<<randomProb<<endl;
+    
+   // cout<<P[0]<<thre1<<thre2<<endl;
+   // cout<<"random number "<<randomProb<<endl;
+    if ( randomProb < P[0]) return d;
+    if(randomProb < thre1)
+        {
+            if(d == '^') return '<';
+            if(d == '<') return 'v';
+            if(d == 'v') return '>';
+            if(d == '>') return '^';
+        }
+    if (randomProb < thre2)
+        {
+            if(d == '^') return '>';
+            if(d == '<') return '^';
+            if(d == 'v') return '<';
+            if(d == '>') return 'v';           
+        }
+            if(d == '^') return 'v';
+            if(d == '<') return '>';
+            if(d == 'v') return '^';
+            if(d == '>') return '<';           
+}
 state Simulator::take_action(int x, int y, char a, vector<state> sT )
         {
-
+            
+    //cout<<"ACtion wish: "<<a<<endl;
+            char b = probabilityAction(a);
+            a = b;
+    //cout<<"ACtion have: "<<b<<endl;            
             int xtmp,ytmp,newX,newY;
-            switch (a)
+            switch (b)
             {
             case '^' :
                 {
@@ -505,27 +538,31 @@ char state::policy()
             {
                 float Nlearn = 1/Nu;
                // cout<<"index learn"<<Nlearn<<endl;
-                Qu += Nlearn*(R + G*Qmax -   Qu) ;
+                //Qu += Nlearn*(R + G*Qmax -   Qu) ;
+                Qu += 0.01*(R + G*Qmax -   Qu) ;
 
                 break;
             }
             case '<':
             {
                 float Nlearn = 1/Nl;
-                Ql += Nlearn*(R + G*Qmax -   Ql) ;
+                //Ql += Nlearn*(R + G*Qmax -   Ql) ;
+                Ql += 0.01*(R + G*Qmax -   Ql) ;
                 break;
             }
             case 'v':
             {
                 float Nlearn = 1/Nd;
                 //cout<<"index learn"<<(R + G*Qmax -   Qd) <<endl;
-                Qd += Nlearn*(R + G*Qmax -   Qd) ;
+                //Qd += Nlearn*(R + G*Qmax -   Qd) ;
+                Qd += 0.01*(R + G*Qmax -   Qd) ;
                 break;
             }
             case '>':
             {
                 float Nlearn = 1/Nr;
-                Qr += Nlearn*(R + G*Qmax -   Qr) ;
+                //Qr += Nlearn*(R + G*Qmax -   Qr) ;
+                Qr += 0.01*(R + G*Qmax -   Qr) ;
                 break;
             }
             default:
@@ -588,7 +625,7 @@ void printMap(vector<state> map)
 {
     for(auto elm:map)
     {
-        cout<<" X = "<<elm.X<<" Y = "<<elm.Y<<" Ql = "<<elm.policy()<<" Qr = "<<elm.Qr<<" Qu= "<<elm.Qu<<" Qd = "<<elm.Qd<<" Qt= "<<elm.Qt<<endl;
+        cout<<" State: ("<<elm.X<<","<<elm.Y<<") Q_left = "<<setprecision(3)<<elm.Ql<<" Q_right = "<<setprecision(3)<<elm.Qr<<" Q_up= "<<setprecision(3)<<elm.Qu<<" Q_down = "<<setprecision(3)<<elm.Qd<<endl;
     }
 }
 
@@ -643,9 +680,9 @@ string alignStr(float f)
 {
     string s1(to_string(f));
     string s;
-    s = s1.substr(0,6);
+    s = s1.substr(0,4);
     //cout<<s1<<endl;
-    while(s.length() <6 )
+    while(s.length() <5 )
     {
         s += " ";
     }
